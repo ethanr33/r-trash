@@ -18,12 +18,12 @@
             grid-row-gap: 6rem;
         }
 
-        #trash-container { 
-            grid-area: 1 / 1 / 1 / 3;
-        }
-
         #count-container {
-            grid-area: 2 / 1 / 3 / 2;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+            justify-content: center;
+            align-items: center;
         }
 
         #count-container h2 {
@@ -31,13 +31,24 @@
         }
 
         #graph-container { 
-            grid-area: 2 / 2 / 3 / 3;
             width: 80%;
             margin: 0 10%;
         }
 
         h1 {
             text-align: center;
+        }
+
+        #gpt-suggestion {
+            text-align: center;
+        }
+
+        #suggestions-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
         }
 
         #data-container {
@@ -55,8 +66,6 @@
         }
 
         .trash-container {
-            width: 50%;
-            margin: 0 auto;
             padding: 5rem 0;
             position: relative;
             display: flex;
@@ -115,6 +124,14 @@
             border-radius: 2rem;
         }
 
+        #graph-container {
+            background-color: white;
+        }
+
+        #graph-container h2 {
+            text-align: center;
+        }
+
         @media only screen and (max-width: 500px) {
             .main-container {
                 display: flex;
@@ -134,14 +151,14 @@
             }
 
             #graph-container {
-                grid-area: 3 / 1 / 4 / 1;
                 display: flex;
                 justify-content: center;
-                height: 400px;
+                align-items: center;
+                background-color: white;
             }
 
-            #graph {
-                height: 400px;
+            #graph-container h2 {
+                text-align: center;
             }
         }
     </style>
@@ -153,16 +170,21 @@
         <div id="trash-container">
             <div class="trash-container container">
                 <div class="trash-can" id="trash-can-1">
-                    <p class="can-percentage">25%</p>
-                    <img src="assets/trashcan-25.png" />
+                    <p class="can-percentage"></p>
+                    <img src="assets/trashcan-0.png" />
                     <p class="can-label">Trash</p>
                 </div>
                 <div class="trash-can" id="trash-can-2">
-                    <p class="can-percentage">50%</p>
-                    <img src="assets/recyclingbin-50.png" />
+                    <p class="can-percentage"></p>
+                    <img src="assets/recyclingbin-0.png" />
                     <p class="can-label">Recycling</p>
                 </div>
             </div>
+        </div>
+        <div id="suggestions-container" class="container">
+            <h1>GPT Suggestions</h1>
+            <button id="suggestion-generator">Generate Suggestion</button>
+            <p id="gpt-suggestion"></p>
         </div>
         <div id="count-container" class="container">
             <h2 class="count-text" id="trash-count">Trash count: 69</h2>
@@ -170,6 +192,7 @@
             <h2 class="count-text" id="total-count">Total: 489</h2>
         </div>
         <div id="graph-container" class="container">
+            <h2>Graph</h2>
             <canvas id="graph"></canvas>
         </div>
     </div>
@@ -188,20 +211,40 @@
             let recyclingCounter = document.querySelector("#recycling-count");
             let totalCounter = document.querySelector("#total-count")
 
+            let gptResponseText = document.querySelector("#gpt-suggestion");
+            let suggestionGeneratorButton = document.querySelector("#suggestion-generator");
+
             const trashCanDepth = 50;
 
-            var settings = {
-                'cache': false,
-                'dataType': "jsonp",
-                "async": true,
-                "crossDomain": true,
-                "url": "https://maps.googleapis.com/maps/api/distancematrix/json?units",
-                "method": "GET",
+            let recyclingCount = -1;
+            let garbageCount = -1;
+
+            var gptSettings = {
+                "url": "https://api.openai.com/v1/chat/completions",
+                "method": "POST",
+                "timeout": 0,
                 "headers": {
-                    "accept": "application/json",
-                    "Access-Control-Allow-Origin":"*"
-                }
-            }
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer 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"
+                },
+                "data": "",
+            };
+
+            suggestionGeneratorButton.addEventListener("click", function() {
+                gptSettings.data = JSON.stringify({
+                    "model": "gpt-3.5-turbo",
+                    "messages": [
+                    {
+                        "role": "user",
+                        "content": `I threw away ${garbageCount} pieces of trash and recycled ${recyclingCount} items. How can I be more sustainable? Keep your response under 50 words.`
+                    }
+                    ]
+                })   
+                
+                $.ajax(gptSettings).done(response => {
+                    gptResponseText.innerHTML = response.choices[0].message.content
+                });
+            });
 
             const ctx = document.getElementById('graph');
 
@@ -225,9 +268,9 @@
                 },
             });
 
+
+
             function updateCount() {
-                let recyclingCount = -1;
-                let garbageCount = -1;
 
                 $.get("http://34.125.240.67/api/TrashCount", function(data, status){
                 console.log(data[0]['value'])
@@ -236,7 +279,6 @@
                 recyclingCounter.innerHTML = "Recycling count: " + recyclingCount
                 trashCounter.innerHTML = "Trash count: " + garbageCount
                 totalCounter.innerHTML = "Total count: " + (recyclingCount + garbageCount).toString()
-
 
                 chart.data.datasets[0].data = [garbageCount, recyclingCount]
                 chart.update()
